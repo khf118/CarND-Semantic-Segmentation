@@ -53,12 +53,12 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
 		:param num_classes: Number of classes to classify
 		:return: The Tensor for the last layer of output
 		"""
-		conv_1x1 = tf.layers.conv2d(vgg_layer7_out, num_classes, 1, padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
-		output = tf.layers.conv2d_transpose(conv_1x1, vgg_layer4_out.get_shape().as_list()[-1], 4, 2, padding='same',kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+		conv_1x1 = tf.layers.conv2d(vgg_layer7_out, num_classes, 1, padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3),kernel_initializer=tf.truncated_normal_initializer(stddev=0.01))
+		output = tf.layers.conv2d_transpose(conv_1x1, vgg_layer4_out.get_shape().as_list()[-1], 4, 2, padding='same',kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3),kernel_initializer=tf.truncated_normal_initializer(stddev=0.01))
 		output = tf.add(output, vgg_layer4_out)
-		output = tf.layers.conv2d_transpose(output, vgg_layer3_out.get_shape().as_list()[-1], 4, 2, padding='same',kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+		output = tf.layers.conv2d_transpose(output, vgg_layer3_out.get_shape().as_list()[-1], 4, 2, padding='same',kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3),kernel_initializer=tf.truncated_normal_initializer(stddev=0.01))
 		output = tf.add(output, vgg_layer3_out)
-		output = tf.layers.conv2d_transpose(output, num_classes, 16, 8, padding='same',kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+		output = tf.layers.conv2d_transpose(output, num_classes, 16, 8, padding='same',kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3),kernel_initializer=tf.truncated_normal_initializer(stddev=0.01))
 		return output
 tests.test_layers(layers)
 
@@ -74,7 +74,8 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
 		"""
 		# TODO: Implement function
 		logits = tf.reshape(nn_last_layer, (-1, num_classes))
-		cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels =correct_label, logits = logits))
+		l2_loss = sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
+		cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels =correct_label, logits = logits) + l2_loss)
 		optimizer = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy_loss)
 		return logits, optimizer, cross_entropy_loss
 tests.test_optimize(optimize)
@@ -112,10 +113,10 @@ def run():
 		image_shape = (160, 576)
 		data_dir = '/data'
 		runs_dir = './runs'
-		epochs = 300
-		batch_size = 10
+		epochs = 20
+		batch_size = 2
 		tests.test_for_kitti_dataset(data_dir)
-		learning_rate= 0.5
+		learning_rate= 1e-4
 		keep_prob = 0.5
 		# Download pretrained vgg model
 		helper.maybe_download_pretrained_vgg(data_dir)
